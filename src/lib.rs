@@ -1,4 +1,4 @@
-pub fn base64<B: AsRef<[u8]>>(input: B, buf: &mut [u8]) -> Option<&[u8]> {
+pub fn base64<B: AsRef<[u8]>>(input: B, buf: &mut [u8]) -> Option<usize> {
     let input = input.as_ref();
     let mut iter = input.chunks_exact(3);
     const MAP: [u8; 64] = [
@@ -46,7 +46,7 @@ pub fn base64<B: AsRef<[u8]>>(input: B, buf: &mut [u8]) -> Option<&[u8]> {
         _ => {}
     }
 
-    Some(&buf[..index])
+    Some(index)
 }
 
 #[cfg(test)]
@@ -57,15 +57,15 @@ mod tests {
     fn unpadded() {
         let input = "hello!";
         let mut buffer = [0; 12];
-        let read = base64(input, &mut buffer);
-        assert_eq!(read, Some("aGVsbG8h".as_bytes()));
+        let read = base64(input, &mut buffer).expect("enough space");
+        assert_eq!(&buffer[..read], "aGVsbG8h".as_bytes());
     }
 
     #[test]
     fn padded() {
         let input = "hello world";
         let mut buffer = [0; 64];
-        let read = base64(input, &mut buffer);
-        assert_eq!(read, Some("aGVsbG8gd29ybGQ=".as_bytes()));
+        let read = base64(input, &mut buffer).expect("enough space");
+        assert_eq!(&buffer[..read], "aGVsbG8gd29ybGQ=".as_bytes());
     }
 }
