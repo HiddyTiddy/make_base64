@@ -1,7 +1,6 @@
 #[repr(C)]
 struct Chunk {
-    // parts: [u64; 3],
-    parts: [u8; 3],
+    parts: [u64; 3],
 }
 
 #[inline]
@@ -31,12 +30,6 @@ pub fn base64<B: AsRef<[u8]>>(input: B, buf: &mut [u8]) -> Option<usize> {
 
     // the number of full triplets
     let num_triplets = input.len() / 3;
-    // println!(
-    //     "{:?} {} {repeat_until_aligned}",
-    //     input.as_ptr(),
-    //     input.as_ptr() as usize % ALIGN_CHUNK
-    // );
-    // println!("{num_triplets}");
 
     let mut index = 0;
     let its = std::cmp::min(num_triplets, repeat_until_aligned);
@@ -55,88 +48,73 @@ pub fn base64<B: AsRef<[u8]>>(input: B, buf: &mut [u8]) -> Option<usize> {
     }
 
     let input = &input[i..];
-    // println!(
-    //     "{:?} {}",
-    //     input.as_ptr(),
-    //     input.as_ptr() as usize % ALIGN_CHUNK
-    // );
     let len_remainder = input.len() % 3;
     let (input, remainder) = input.split_at(input.len() - len_remainder);
 
     let leftover = input.len() % SIZE_CHUNK;
     let (large, leftover) = input.split_at(input.len() - leftover);
-    // println!("{}", large.len());
 
     let large = unsafe {
         std::slice::from_raw_parts(large.as_ptr() as *const Chunk, large.len() / SIZE_CHUNK)
     };
 
     for elem in large {
-        // let chunk = dbg!([
-        //     elem.parts[0] >> 58,
-        //     elem.parts[0] >> 52,
-        //     elem.parts[0] >> 46,
-        //     elem.parts[0] >> 40,
-        //     elem.parts[0] >> 34,
-        //     elem.parts[0] >> 28,
-        //     elem.parts[0] >> 22,
-        //     elem.parts[0] >> 16,
-        //     elem.parts[0] >> 10,
-        //     elem.parts[0] >> 4,
-        //     elem.parts[0] << 2 | elem.parts[1] >> 62,
-        //     elem.parts[1] >> 56,
-        //     elem.parts[1] >> 50,
-        //     elem.parts[1] >> 44,
-        //     elem.parts[1] >> 38,
-        //     elem.parts[1] >> 32,
-        //     elem.parts[1] >> 26,
-        //     elem.parts[1] >> 20,
-        //     elem.parts[1] >> 14,
-        //     elem.parts[1] >> 8,
-        //     elem.parts[1] >> 2,
-        //     elem.parts[1] << 4 | elem.parts[2] >> 60,
-        //     elem.parts[2] >> 54,
-        //     elem.parts[2] >> 48,
-        //     elem.parts[2] >> 42,
-        //     elem.parts[2] >> 36,
-        //     elem.parts[2] >> 30,
-        //     elem.parts[2] >> 24,
-        //     elem.parts[2] >> 18,
-        //     elem.parts[2] >> 12,
-        //     elem.parts[2] >> 6,
-        //     elem.parts[2],
-        // ]
-        // .map(|x| (x & 0x3f) as usize))
-        // .map(|ch| MAP[ch]);
+        let [a, b, c] = elem.parts.map(u64::from_be);
+        let chunk = [
+            a >> 58,
+            a >> 52,
+            a >> 46,
+            a >> 40,
+            a >> 34,
+            a >> 28,
+            a >> 22,
+            a >> 16,
+            a >> 10,
+            a >> 4,
+            a << 2 | b >> 62,
+            b >> 56,
+            b >> 50,
+            b >> 44,
+            b >> 38,
+            b >> 32,
+            b >> 26,
+            b >> 20,
+            b >> 14,
+            b >> 8,
+            b >> 2,
+            b << 4 | c >> 60,
+            c >> 54,
+            c >> 48,
+            c >> 42,
+            c >> 36,
+            c >> 30,
+            c >> 24,
+            c >> 18,
+            c >> 12,
+            c >> 6,
+            c,
+        ]
+        .map(|x| (x & 0x3f) as usize)
+        .map(|ch| MAP[ch]);
+
+        buf[index..index + chunk.len()].copy_from_slice(&chunk);
+
+        index += chunk.len();
+
+        // ///////
+        // for chunk in elem.parts.chunks_exact(3) {
+        //     // xxxxxx xxyyyy yyyyzz zzzzzz
+        //     let [a, b, c]: [u8; 3] = chunk.try_into().unwrap();
         //
-        // buf[index..index + chunk.len()].copy_from_slice(&chunk);
-
-        // index += chunk.len();
-        for chunk in elem.parts.chunks_exact(3) {
-            // xxxxxx xxyyyy yyyyzz zzzzzz
-            let [a, b, c]: [u8; 3] = chunk.try_into().unwrap();
-
-            buf[index..index + 4].copy_from_slice(
-                &[a >> 2, a << 4 | b >> 4, b << 2 | c >> 6, c]
-                    .map(|x| (x & 0x3f) as usize)
-                    .map(|ch| MAP[ch]),
-            );
-
-            i += 3;
-            index += 4;
-        }
+        //     buf[index..index + 4].copy_from_slice(
+        //         &[a >> 2, a << 4 | b >> 4, b << 2 | c >> 6, c]
+        //             .map(|x| (x & 0x3f) as usize)
+        //             .map(|ch| MAP[ch]),
+        //     );
+        //
+        //     index += 4;
+        // }
     }
-
-    // while i + 3 < input.len() {
-    //     let _ = input[i..i + 4];
-    //     let x = u32::from_le_bytes([chunk[2], chunk[1], chunk[0], 0]);
-    //     let words = [(x >> 18), (x >> 12), (x >> 6), x]
-    //         .map(|x| (x as usize) & 0x3f)
-    //         .map(|i| MAP[i]);
-    //     buf[index..index + 4].copy_from_slice(&words);
-    //     index += 4;
-    //     i += 3;
-    // }
 
     for chunk in leftover.chunks_exact(3) {
         // xxxxxx xxyyyy yyyyzz zzzzzz
@@ -148,7 +126,6 @@ pub fn base64<B: AsRef<[u8]>>(input: B, buf: &mut [u8]) -> Option<usize> {
                 .map(|ch| MAP[ch]),
         );
 
-        i += 3;
         index += 4;
     }
 
@@ -211,6 +188,6 @@ mod tests {
             &buffer[..read],
             "c29tZSBmYWlybHkgbG9uZyBzdHJpbmcgb2YgdGV4dCB0byBiZSBjb252ZXJ0ZWQgaW50byBiYXNlNjQ="
                 .as_bytes()
-        )
+        );
     }
 }
