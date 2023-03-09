@@ -11,8 +11,13 @@ edition = "2021"
 criterion = "0.4.0"
 rand = "0.8.5"
 human_bytes = "0.4.1"
+base64 = "0.21"
 
 [[bench]]
 name = "base64"
+harness = false
+
+[[bench]]
+name = "reference"
 harness = false
 
