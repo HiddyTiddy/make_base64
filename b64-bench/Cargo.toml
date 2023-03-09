@@ -1,0 +1,14 @@
+[package]
+name = "b64-bench"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+make_base64 = {version = "0.1.0", path = "../"}
+rand = "0.8.5"
+human_bytes = "0.4.1"
+
+[profile.release]
+debug = true
