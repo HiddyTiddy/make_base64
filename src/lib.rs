@@ -1,13 +1,19 @@
+#![doc = include_str!("../README.md")]
+
 #[repr(C)]
 struct Chunk {
     parts: [u64; 3],
 }
 
+/// computes the minimum length in bytes a buffer must have to fit an encoding for input of
+/// `input_len` bytes.
 #[inline]
 pub fn length_required(input_len: usize) -> usize {
     ((input_len + 2) / 3) * 4
 }
 
+/// base64-encodes `input` into `buf`.
+/// returns the number of bytes written
 pub fn base64<B: AsRef<[u8]>>(input: B, buf: &mut [u8]) -> Option<usize> {
     let input = input.as_ref();
     if length_required(input.len()) > buf.len() {
